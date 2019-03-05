@@ -17,7 +17,7 @@ class Model(object):
         if not self.__export_path:
             raise SystemExit('EXPORT_DIR not found')
 
-        self.batch_size = 0 
+        self.batch_size = 0
         self.epochs = 0
         self.epoch_steps = 0
 
