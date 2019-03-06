@@ -22,6 +22,8 @@ class Model(object):
         self.batch_size = 0
         self.epochs = 0
         self.epoch_steps = 0
+        self.fitness_key = None
+        self.minimum_score = None
 
         self.__dict__.update(kwargs)
 
@@ -49,6 +51,16 @@ class Model(object):
             print('WARNING: Using default epoch steps of %d' % DEFAULT_EPOCH_STEPS)
             self.epoch_steps = DEFAULT_EPOCH_STEPS
 
+        if not self.fitness_key:
+            print('WARNING: No fitness key set, will not abort early')
+
+        if not self.minimum_score:
+            print('WARNING: minimum_score not set, will not abort early')
+
+        if not isinstance(self.minimum_score, (int, float)):
+            print('WARNING: minimum_score is not a number, will not abort early')
+            self.minimum_score = None
+
     def do(self):
         model_name = self.name_model()
         (x_train, y_train), (x_test, y_test), nb_classes, input_shape = self.load_data(self.__training_data_path)
@@ -72,6 +84,14 @@ class Model(object):
             trained_epochs += self.epoch_steps
             if trained_epochs >= self.epochs:
                 break
+
+            # Evaluate fitness
+            if isinstance(fitness, dict) and self.fitness_key and self.minimum_score:
+                score = fitness.get(fitness_key)
+                if score < self.minimum_score:
+                    print('Fitness: %.2f, Minimum: %.2f, aborting' % (score, self.minimum_score))
+                    fitness['aborted'] = True
+                    break
 
         # Indent these lines to save per epoch set
         self.save_fitness(fitness, self.__export_path)
