@@ -5,7 +5,7 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name='singularitytechnologies.easymodels',
-    version='0.1.3dev',
+    version='0.1.7dev',
     author='Sam Lacey',
     author_email='sam.lacey@singularity-technologies.io',
     description='Easy to use Machine Learning training classes',

@@ -20,8 +20,8 @@ class Model(object):
             raise SystemExit('%s not found' % EXPORT_PATH_KEY)
 
         self.batch_size = 0
-        self.epochs = 0
-        self.epoch_steps = 0
+        self.rounds = 0
+        self.round_steps = 0
         self.fitness_key = None
         self.minimum_score = None
 
@@ -43,13 +43,13 @@ class Model(object):
             print('WARNING: Using default batch_size of %d' % DEFAULT_BATCH_SIZE)
             self.batch_size = DEFAULT_BATCH_SIZE
 
-        if not self.epochs:
-            print('WARNING: Using default epochs of %d' % DEFAULT_EPOCHS)
-            self.epochs = DEFAULT_EPOCHS
+        if not self.rounds:
+            print('WARNING: Using default rounds of %d' % DEFAULT_EPOCHS)
+            self.rounds = DEFAULT_EPOCHS
 
-        if not self.epoch_steps:
+        if not self.round_steps:
             print('WARNING: Using default epoch steps of %d' % DEFAULT_EPOCH_STEPS)
-            self.epoch_steps = DEFAULT_EPOCH_STEPS
+            self.round_steps = DEFAULT_EPOCH_STEPS
 
         if not self.fitness_key:
             print('WARNING: No fitness key set, will not abort early')
@@ -67,35 +67,36 @@ class Model(object):
         model = self.model_func(nb_classes, input_shape)
         model = self.compile_model(model)
 
-        trained_epochs = 0
+        trained_rounds = 0
         fitness = {}
         while True:
             print(
-                'Training model %s, epochs %d -> %d' % (
+                'Training model %s, rounds %d -> %d' % (
                     model_name,
-                    trained_epochs,
-                    trained_epochs + self.epoch_steps,
+                    trained_rounds,
+                    trained_rounds + self.round_steps,
                 )
             )
 
-            model = self.train_epoch(model, x_train, y_train, self.batch_size, self.epoch_steps)
+            model = self.train_epoch(model, x_train, y_train, self.batch_size, self.round_steps)
             fitness = self.evaluate_model(model, x_test, y_test)
-
-            trained_epochs += self.epoch_steps
-            if trained_epochs >= self.epochs:
-                break
 
             # Evaluate fitness
             if isinstance(fitness, dict) and self.fitness_key and self.minimum_score:
-                score = fitness.get(fitness_key)
+                score = fitness.get(self.fitness_key)
                 if score < self.minimum_score:
                     print('Fitness: %.2f, Minimum: %.2f, aborting' % (score, self.minimum_score))
                     fitness['aborted'] = True
                     break
 
+            if trained_rounds >= self.rounds:
+                break
+
+            trained_rounds += self.round_steps
+
         # Indent these lines to save per epoch set
         self.save_fitness(fitness, self.__export_path)
-        self.save_model(model_name, model, self.__export_path, self.epochs)
+        self.save_model(model_name, model, self.__export_path, self.rounds)
 
     def name_model(self):
         raise NotImplementedError('name_model needs to be implemented')
@@ -109,7 +110,7 @@ class Model(object):
     def build_model(self, model):
         raise NotImplementedError('build_model not implemented')
 
-    def train_epoch(self, model, x_train, y_train, batch_size, epochs=1):
+    def train_epoch(self, model, x_train, y_train, batch_size, rounds=1):
         raise NotImplementedError('train_epoch not implemented')
 
     def evaluate_model(self, model, x_test, y_test):
