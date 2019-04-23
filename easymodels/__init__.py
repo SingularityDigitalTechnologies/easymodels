@@ -1,4 +1,5 @@
 import os
+import sys
 
 
 DEFAULT_EPOCHS = 10
@@ -6,6 +7,7 @@ DEFAULT_EPOCH_STEPS = 5
 DEFAULT_BATCH_SIZE = 256
 TRAINING_DATA_KEY = 'TRAINING_DATA_PATH'
 EXPORT_PATH_KEY = 'EXPORT_PATH'
+ERROR_FILE_NAME = 'ERROR'
 
 
 class Model(object):
@@ -62,10 +64,24 @@ class Model(object):
             self.minimum_score = None
 
     def do(self):
-        model_name = self.name_model()
-        (x_train, y_train), (x_test, y_test), nb_classes, input_shape = self.load_data(self.__training_data_path)
+        try:
+            self.run()
+        except Exception as e:
+            print('Some exception was raised: %s' % e)
+            with open(os.path.join(self.__export_path, ERROR_FILE_NAME), 'w') as f:
+                f.write(ERROR_FILE_NAME)
+
+            sys.exit(1)
+
+    def run(self):
+        model_name = self.name()
+        train, test = self.load_data(self.__training_data_path)
+
+        nb_classes = self.get_nb_classes()
+        input_shape = self.get_input_shape()
+
         model = self.model_func(nb_classes, input_shape)
-        model = self.compile_model(model)
+        model = self.compile(model)
 
         trained_rounds = 0
         fitness = {}
@@ -78,8 +94,8 @@ class Model(object):
                 )
             )
 
-            model = self.train_epoch(model, x_train, y_train, self.batch_size, self.round_steps)
-            fitness = self.evaluate_model(model, x_test, y_test)
+            model = self.train(model, self.round_steps, train)
+            fitness = self.evaluate(model, test)
 
             # Evaluate fitness
             if isinstance(fitness, dict) and self.fitness_key and self.minimum_score:
@@ -94,12 +110,18 @@ class Model(object):
 
             trained_rounds += self.round_steps
 
-        # Indent these lines to save per epoch set
-        self.save_fitness(fitness, self.__export_path)
-        self.save_model(model_name, model, self.__export_path, self.rounds)
+            # Save after every epoch so we have something incase it crashes
+            self.save_fitness(fitness, self.__export_path)
+            self.save(model_name, model, self.__export_path, self.rounds)
 
-    def name_model(self):
-        raise NotImplementedError('name_model needs to be implemented')
+    def name(self):
+        raise NotImplementedError('name needs to be implemented')
+
+    def get_input_shape(self):
+        raise NotImplementedError('get_input_shape not implemented')
+
+    def get_nb_classes(self):
+        raise NotImplementedError('get_nb_classes not implemented')
 
     def load_data(self, file_path):
         raise NotImplementedError('load_data needs to be implemented')
@@ -107,17 +129,17 @@ class Model(object):
     def get_model_map(self):
         raise NotImplementedError('get_model_map needs to be implemented')
 
-    def build_model(self, model):
-        raise NotImplementedError('build_model not implemented')
+    def build(self, model):
+        raise NotImplementedError('build not implemented')
 
-    def train_epoch(self, model, x_train, y_train, batch_size, rounds=1):
-        raise NotImplementedError('train_epoch not implemented')
+    def train(self, model, round_step, *args):
+        raise NotImplementedError('train not implemented')
 
-    def evaluate_model(self, model, x_test, y_test):
-        raise NotImplementedError('evaluate_model not implemented')
+    def evaluate(self, model, x_test, y_test):
+        raise NotImplementedError('evaluate not implemented')
 
-    def save_model(self, model_name, model, epoch):
-        raise NotImplementedError('save_model not implmeneted')
+    def save(self, model_name, model, epoch):
+        raise NotImplementedError('save not implmeneted')
 
     def save_fitness(self, fitness, export_path):
         raise NotImplementedError('save_fitness not implmeneted')
