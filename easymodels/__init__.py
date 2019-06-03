@@ -67,10 +67,9 @@ class Model(object):
         try:
             self.run()
         except Exception as e:
+            import traceback
+            print(traceback.format_exc())
             print('Some exception was raised: %s' % e)
-            with open(os.path.join(self.__export_path, ERROR_FILE_NAME), 'w') as f:
-                f.write(ERROR_FILE_NAME)
-
             sys.exit(1)
 
     def run(self):
@@ -105,10 +104,9 @@ class Model(object):
                     fitness['aborted'] = True
                     break
 
+            trained_rounds += 1
             if trained_rounds >= self.rounds:
                 break
-
-            trained_rounds += self.round_steps
 
             # Save after every epoch so we have something incase it crashes
             self.save_fitness(fitness, self.__export_path)

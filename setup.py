@@ -5,13 +5,13 @@ with open('README.md', 'r') as f:
 
 setuptools.setup(
     name='singularitytechnologies.easymodels',
-    version='0.1.10dev',
+    version='0.1.12dev',
     author='Sam Lacey',
     author_email='sam.lacey@singularity-technologies.io',
     description='Easy to use Machine Learning training classes',
     long_description=long_description,
     long_description_content_type='text/markdown',
-    url='https://github.com/singularitytechnologies/easymodels',
+    url='https://github.com/singularitydigitaltechnologies/easymodels',
     packages=setuptools.find_packages(),
     classifiers=[
         'Programming Language :: Python :: 3',
