@@ -1,5 +1,6 @@
 import os
 import sys
+import math
 
 
 DEFAULT_EPOCHS = 10
@@ -26,6 +27,7 @@ class Model(object):
         self.round_steps = 0
         self.fitness_key = None
         self.minimum_score = None
+        self.minimum_variance = 0
 
         self.__dict__.update(kwargs)
 
@@ -46,8 +48,7 @@ class Model(object):
             self.batch_size = DEFAULT_BATCH_SIZE
 
         if not self.rounds:
-            print('WARNING: Using default rounds of %d' % DEFAULT_EPOCHS)
-            self.rounds = DEFAULT_EPOCHS
+            print('WARNING: 0 Rounds have been set')
 
         if not self.round_steps:
             print('WARNING: Using default epoch steps of %d' % DEFAULT_EPOCH_STEPS)
@@ -62,6 +63,8 @@ class Model(object):
         if not isinstance(self.minimum_score, (int, float)):
             print('WARNING: minimum_score is not a number, will not abort early')
             self.minimum_score = None
+
+        self.model = None
 
     def do(self):
         try:
@@ -80,11 +83,14 @@ class Model(object):
         input_shape = self.get_input_shape()
 
         model = self.model_func(nb_classes, input_shape)
-        model = self.compile(model)
 
+        self.compile(model)
+
+        rounds_left = self.rounds
         trained_rounds = 0
+        previous_score = 0
         fitness = {}
-        while True:
+        while rounds_left:
             print(
                 'Training model %s, rounds %d -> %d' % (
                     model_name,
@@ -93,8 +99,14 @@ class Model(object):
                 )
             )
 
-            model = self.train(model, self.round_steps, train)
+            self.train(model, self.round_steps, train)
             fitness = self.evaluate(model, test)
+
+            # Save after every epoch so we have something incase it crashes
+            self.save_fitness(fitness, self.__export_path)
+            self.save(model_name, model, self.__export_path, self.rounds)
+            rounds_left -= 1
+            trained_rounds += self.round_steps
 
             # Evaluate fitness
             if isinstance(fitness, dict) and self.fitness_key and self.minimum_score:
@@ -104,13 +116,21 @@ class Model(object):
                     fitness['aborted'] = True
                     break
 
-            trained_rounds += 1
-            if trained_rounds >= self.rounds:
-                break
+                variance = abs(score - previous_score)
+                print('Var: %.2f, Score: %.2f, Prev: %.2f' % (variance, score, previous_score))
+                if variance < self.minimum_variance:
+                    print('Fitness: %.2f, Variance: %.2f, aborting' % (score, variance))
+                    fitness['aborted'] = True
+                    break
 
-            # Save after every epoch so we have something incase it crashes
-            self.save_fitness(fitness, self.__export_path)
-            self.save(model_name, model, self.__export_path, self.rounds)
+                if math.isnan(score):
+                    print('Fitness: %.2f, Variance: %.2f, aborting' % (score, variance))
+                    fitness['aborted'] = True
+                    break
+
+                previous_score = score
+
+        self.model = model
 
     def name(self):
         raise NotImplementedError('name needs to be implemented')
